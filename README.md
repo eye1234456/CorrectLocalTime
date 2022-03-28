@@ -1,7 +1,7 @@
 # CorrectLocalTime
 完整demo：https://github.com/eye1234456/CorrectLocalTime.git
 
-![效果](https://github.com/eye1234456/CorrectLocalTime/main/screenshots/1.png)
+![效果](https://github.com/eye1234456/CorrectLocalTime/raw/main/screenshots/1.png)
 
 > 前言
 开发中经常遇到在客户端做一些时间校验的场景，比如某个活动服务器设置到某个时间点才可以参与或进入，如果用户设备自己设置了与实际相差很大的时间或时区，会导致一些业务出错或参数校验失败的问题
