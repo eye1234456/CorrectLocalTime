@@ -1,40 +1,14 @@
-# CorrectLocalTime
-完整demo：https://github.com/eye1234456/CorrectLocalTime.git
+//
+//  NSDate+Diff.m
+//  CorrectLocalTime
+//
+//  Created by Flow on 3/28/22.
+//
 
-![效果](https://github.com/eye1234456/CorrectLocalTime/main/screenshots/1.png)
+#import "NSDate+Diff.h"
 
-> 前言
-开发中经常遇到在客户端做一些时间校验的场景，比如某个活动服务器设置到某个时间点才可以参与或进入，如果用户设备自己设置了与实际相差很大的时间或时区，会导致一些业务出错或参数校验失败的问题
+@implementation NSDate (Diff)
 
-解决方案：
->在每次请求接口时，从header里获取到比较准确的服务器时间，与本地时间进行校验，获取到本地时间与服务器时间的偏移量，然后在需要使用本地时间时，将偏移量添加到时间上
-
-1、从接口响应体里获取服务器接口请求时的时间（以AFNetwoking为例）
-
-```
-[[AFHTTPSessionManager manager] POST:url parameters:parameters headers:nil progress:nil success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
-        [NSDate diff_updateDateDiffWithResponse:task.response];
-    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
-        [NSDate diff_updateDateDiffWithResponse:task.response];
-    }];
-```
-
-2、拿到服务器响应后的`response`后，获取`response`的`header`里的`Date`字段并计算出于本机时间的偏移并保存到内存
-
-```
-// 服务器时间字符串转换为Date
-    NSDate *inputDate = [NSDate diff_dateFromRFC822String:dateServer];
-    if (inputDate == nil) {
-        return;
-    }
-    // 本地时间
-    NSDate *localDate = [NSDate date];
-    // 服务器时间与本地时间之间的误差
-    NSTimeInterval distance = [inputDate timeIntervalSinceDate:localDate];
-```
-3、在获取当前时间时，添加上偏移量
-
-```
 /// 获取使用了服务器校验后的时间
 + (NSDate *)diff_now {
     NSDate *localDate = [NSDate date];
@@ -44,11 +18,48 @@
     NSDate *now = [localDate dateByAddingTimeInterval:_diff_distanceLocalWithServer];
     return now;
 }
-```
-----
-4、将服务器时间格式`Mon, 28 Mar 2022 08:54:31 GMT`转换为NSDate的方法
 
-```
+
++ (void)diff_updateDateDiffWithResponse:(NSURLResponse * __nullable)response {
+    if (![response isKindOfClass:NSHTTPURLResponse.class]) {
+        return;
+    }
+    NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+    // 请求到达服务器时的服务器时间
+    NSString *dateServer = [httpResponse.allHeaderFields objectForKey:@"Date"];
+    if (dateServer == nil) {
+        return;
+    }
+    if (![dateServer isKindOfClass:NSString.class]) {
+        return;
+    }
+    // 服务器时间字符串转换为Date
+    NSDate *inputDate = [NSDate diff_dateFromRFC822String:dateServer];
+    if (inputDate == nil) {
+        return;
+    }
+    // 本地时间
+    NSDate *localDate = [NSDate date];
+    // 服务器时间与本地时间之间的误差
+    NSTimeInterval distance = [inputDate timeIntervalSinceDate:localDate];
+    if (distance < -5 || distance > 5) {
+        // 将本地时间与服务器之间的时间差保存
+        [self diff_updateDistance:distance];
+    }
+}
+
+#pragma mark - 保存时间偏移量
+
++ (void)diff_updateDistance:(NSTimeInterval)distance {
+    _diff_distanceLocalWithServer = distance;
+    _diff_str_distanceLocalWithServer = [NSString stringWithFormat:@"%f",distance];
+}
++ (NSString *)diff_get_distanceStr {
+    return _diff_str_distanceLocalWithServer;
+}
+// 服务器时间与本地时间的偏移
+static NSTimeInterval _diff_distanceLocalWithServer = 0;
+static NSString *_diff_str_distanceLocalWithServer = @"unkown";
 #pragma mark - 时间转换工具
 /**
  将header里的标准服务区时间转换为本地时间
@@ -119,4 +130,4 @@ static NSDateFormatter *_diff_internetDateTimeFormatter = nil;
     }
     return _diff_internetDateTimeFormatter;
 }
-```
+@end
